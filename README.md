@@ -11,7 +11,7 @@ Early development phase
 
 ## bumpylife
 
-|Syntax |bumpylife on \| off |
+|Syntax |bumpylife on &#124; off |
 |-------|--------------------|
 |Default|off                 |
 |Context|http                |
