@@ -41,6 +41,12 @@ Sets the max value for the limit of requests to be processed.
 If `ngx_bumpylife` is enabled, each worker process sends SIGQUIT to self when the number of requests to be processed arrived the limit.
 The limit of requests to be processed is randomized in the `bumpylife_min` to `bumpylife_max` range.
 
+
+And `ngx_bumpylife` does not work in the cases below.
+
+ * `bumpylife_min` or `bumpylife_max` is zero.
+ * `bumpylife_min` is higher than `bumpylife_max`.
+
 # Quick Start
 
 ```nginx
