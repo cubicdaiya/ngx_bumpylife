@@ -137,13 +137,8 @@ static char *ngx_http_bumpylife_init_conf(ngx_conf_t *cf, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    ngx_http_bumpylife_mutex = ngx_pcalloc(cf->pool, sizeof(ngx_flag_t *));
-    if (ngx_http_bumpylife_mutex == NULL) {
-        return NGX_CONF_ERROR;
-    }
-
     shm_zone->init = ngx_http_bumpylife_shm_zone_init;
-    shm_zone->data = ngx_http_bumpylife_mutex;
+    shm_zone->data = NULL;
 
     blcf->shm_zone = shm_zone;
 
