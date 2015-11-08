@@ -198,6 +198,11 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
 
         ngx_shmtx_unlock(&shpool->mutex);
 
+        ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
+                      "the count of requests to be processed overed the limit: "
+                      "pid -> %z, count -> %z, limit -> %z",
+                      ngx_pid, ngx_http_bumpylife_count, ngx_http_bumpylife_limit);
+
         kill(ngx_pid, SIGQUIT);
     } else {
         ngx_shmtx_unlock(&shpool->mutex);
