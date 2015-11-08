@@ -4,6 +4,7 @@
 
 static ngx_uint_t ngx_http_bumpylife_limit;
 static ngx_uint_t ngx_http_bumpylife_count;
+static ngx_uint_t ngx_http_bumpylife_exiting;
 static ngx_flag_t *ngx_http_bumpylife_mutex;
 static ngx_str_t  ngx_http_bumpylife_shm = ngx_string("ngx_http_bumpylife_shm");
 
@@ -96,6 +97,7 @@ static ngx_int_t ngx_http_bumpylife_init(ngx_conf_t *cf)
 
     ngx_http_bumpylife_limit = 0;
     ngx_http_bumpylife_count = 0;
+    ngx_http_bumpylife_exiting = 0;
 
     return NGX_OK;
 }
@@ -152,10 +154,6 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
 
     blcf = ngx_http_get_module_main_conf(r, ngx_http_bumpylife_module);
 
-    if (ngx_exiting) {
-        return NGX_DECLINED;
-    }
-
     if (!blcf->enable) {
         return NGX_DECLINED;
     }
@@ -165,6 +163,10 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
     }
 
     if (blcf->min > blcf->max) {
+        return NGX_DECLINED;
+    }
+
+    if (ngx_http_bumpylife_exiting) {
         return NGX_DECLINED;
     }
 
