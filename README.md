@@ -38,7 +38,7 @@ Sets the max value for the limit of requests to be processed.
 
 # Behavior
 
-If `ngx_bumpylife` is enabled, each worker process sends `SIGQUIT` to self when the number of requests to be processed arrived the limit.
+If `ngx_bumpylife` is enabled, each worker process sends `SIGQUIT` to self when the number of requests to be processed overs the limit.
 The limit of requests to be processed is randomized in the `bumpylife_min` to `bumpylife_max` range.
 
 
