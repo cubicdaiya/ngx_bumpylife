@@ -173,6 +173,11 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
         ngx_http_bumpylife_threshold = blcf->min + rand() % (blcf->max - blcf->min);
     }
 
+    if (ngx_http_bumpylife_count > 0 && ngx_http_bumpylife_count <= ngx_http_bumpylife_threshold) {
+        ngx_http_bumpylife_count++;
+        return NGX_DECLINED;
+    }
+
     /*
     printf("pid: %zd, mutex:%zd\n", ngx_pid, *ngx_http_bumpylife_mutex);
     printf("%zd, %zd, %zd, %zd\n", blcf->min, blcf->max, ngx_http_bumpylife_threshold, ngx_http_bumpylife_count);
