@@ -2,7 +2,7 @@
 #include <ngx_core.h>
 #include <ngx_http.h>
 
-static ngx_uint_t ngx_http_bumpylife_threshold;
+static ngx_uint_t ngx_http_bumpylife_limit;
 static ngx_uint_t ngx_http_bumpylife_count;
 static ngx_flag_t *ngx_http_bumpylife_mutex;
 static ngx_str_t  ngx_http_bumpylife_shm = ngx_string("ngx_http_bumpylife_shm");
@@ -94,7 +94,7 @@ static ngx_int_t ngx_http_bumpylife_init(ngx_conf_t *cf)
     }
     *h = ngx_http_bumpylife_handler;
 
-    ngx_http_bumpylife_threshold = 0;
+    ngx_http_bumpylife_limit = 0;
     ngx_http_bumpylife_count = 0;
 
     return NGX_OK;
@@ -168,19 +168,19 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
         return NGX_DECLINED;
     }
 
-    if (ngx_http_bumpylife_threshold == 0) {
+    if (ngx_http_bumpylife_limit == 0) {
         srand(ngx_time() ^ ngx_pid);
-        ngx_http_bumpylife_threshold = blcf->min + rand() % (blcf->max - blcf->min);
+        ngx_http_bumpylife_limit = blcf->min + rand() % (blcf->max - blcf->min);
     }
 
-    if (ngx_http_bumpylife_count > 0 && ngx_http_bumpylife_count <= ngx_http_bumpylife_threshold) {
+    if (ngx_http_bumpylife_count > 0 && ngx_http_bumpylife_count <= ngx_http_bumpylife_limit) {
         ngx_http_bumpylife_count++;
         return NGX_DECLINED;
     }
 
     /*
     printf("pid: %zd, mutex:%zd\n", ngx_pid, *ngx_http_bumpylife_mutex);
-    printf("%zd, %zd, %zd, %zd\n", blcf->min, blcf->max, ngx_http_bumpylife_threshold, ngx_http_bumpylife_count);
+    printf("%zd, %zd, %zd, %zd\n", blcf->min, blcf->max, ngx_http_bumpylife_limit, ngx_http_bumpylife_count);
     */
 
     shpool = (ngx_slab_pool_t *) blcf->shm_zone->shm.addr;
@@ -193,7 +193,7 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
 
     ngx_http_bumpylife_count++;
 
-    if (*ngx_http_bumpylife_mutex == 0 && ngx_http_bumpylife_count > ngx_http_bumpylife_threshold) {
+    if (*ngx_http_bumpylife_mutex == 0 && ngx_http_bumpylife_count > ngx_http_bumpylife_limit) {
         *ngx_http_bumpylife_mutex = 1;
 
         ngx_shmtx_unlock(&shpool->mutex);
