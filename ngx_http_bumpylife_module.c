@@ -205,7 +205,11 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
                       "pid -> %z, count -> %z, limit -> %z",
                       ngx_pid, ngx_http_bumpylife_count, ngx_http_bumpylife_limit);
 
-        kill(ngx_pid, SIGQUIT);
+        ngx_http_bumpylife_exiting = 1;
+        if (kill(ngx_pid, SIGQUIT) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          "kill(%P, %d) failed", ngx_pid, SIGQUIT);
+        }
     } else {
         ngx_shmtx_unlock(&shpool->mutex);
     }
