@@ -5,7 +5,7 @@
 static ngx_uint_t ngx_http_bumpylife_limit;
 static ngx_uint_t ngx_http_bumpylife_count;
 static ngx_uint_t ngx_http_bumpylife_exiting;
-static ngx_flag_t *ngx_http_bumpylife_mutex;
+static ngx_pid_t *ngx_http_bumpylife_target_pid;
 static ngx_str_t  ngx_http_bumpylife_shm = ngx_string("ngx_http_bumpylife_shm");
 
 typedef struct ngx_http_bumpylife_conf_t {
@@ -175,30 +175,27 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
         ngx_http_bumpylife_limit = blcf->min + rand() % (blcf->max - blcf->min);
     }
 
-    if (ngx_http_bumpylife_count > 0 && ngx_http_bumpylife_count <= ngx_http_bumpylife_limit) {
-        ngx_http_bumpylife_count++;
-        return NGX_DECLINED;
-    }
-
     /*
-    printf("pid: %zd, mutex:%zd\n", ngx_pid, *ngx_http_bumpylife_mutex);
+    printf("pid: %zd, mutex:%zd\n", ngx_pid, *ngx_http_bumpylife_target_pid);
     printf("%zd, %zd, %zd, %zd\n", blcf->min, blcf->max, ngx_http_bumpylife_limit, ngx_http_bumpylife_count);
     */
+
+    ngx_http_bumpylife_count++;
 
     shpool = (ngx_slab_pool_t *) blcf->shm_zone->shm.addr;
 
     ngx_shmtx_lock(&shpool->mutex);
 
-    if (ngx_http_bumpylife_count == 0) {
-        *ngx_http_bumpylife_mutex = 0;
+    if (*ngx_http_bumpylife_target_pid != 0) {
+        if (kill(*ngx_http_bumpylife_target_pid, SIGQUIT) == -1) {
+            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
+                          "kill(%P, %d) failed", ngx_pid, SIGQUIT);
+        }
+        *ngx_http_bumpylife_target_pid = 0;
     }
 
-    ngx_http_bumpylife_count++;
-
-    if (*ngx_http_bumpylife_mutex == 0 && ngx_http_bumpylife_count > ngx_http_bumpylife_limit) {
-        *ngx_http_bumpylife_mutex = 1;
-
-        ngx_shmtx_unlock(&shpool->mutex);
+    if (*ngx_http_bumpylife_target_pid == 0 && ngx_http_bumpylife_count > ngx_http_bumpylife_limit) {
+        *ngx_http_bumpylife_target_pid = ngx_pid;
 
         ngx_log_error(NGX_LOG_NOTICE, r->connection->log, 0,
                       "the count of requests to be processed overed the limit: "
@@ -206,13 +203,9 @@ static ngx_int_t ngx_http_bumpylife_handler(ngx_http_request_t *r)
                       ngx_pid, ngx_http_bumpylife_count, ngx_http_bumpylife_limit);
 
         ngx_http_bumpylife_exiting = 1;
-        if (kill(ngx_pid, SIGQUIT) == -1) {
-            ngx_log_error(NGX_LOG_ALERT, r->connection->log, ngx_errno,
-                          "kill(%P, %d) failed", ngx_pid, SIGQUIT);
-        }
-    } else {
-        ngx_shmtx_unlock(&shpool->mutex);
     }
+
+    ngx_shmtx_unlock(&shpool->mutex);
 
     return NGX_DECLINED;
 }
@@ -224,15 +217,15 @@ static ngx_int_t ngx_http_bumpylife_shm_zone_init(ngx_shm_zone_t *shm_zone, void
     shpool = (ngx_slab_pool_t *) shm_zone->shm.addr;
 
     if (shm_zone->shm.exists) {
-        ngx_http_bumpylife_mutex = shpool->data;
+        ngx_http_bumpylife_target_pid = shpool->data;
         return NGX_OK;
     }
 
-    ngx_http_bumpylife_mutex = ngx_slab_alloc(shpool, sizeof(ngx_flag_t *));
-    if (ngx_http_bumpylife_mutex == NULL) {
+    ngx_http_bumpylife_target_pid = ngx_slab_alloc(shpool, sizeof(ngx_pid_t *));
+    if (ngx_http_bumpylife_target_pid == NULL) {
         return NGX_ERROR;
     }
-    *ngx_http_bumpylife_mutex = 0;
+    *ngx_http_bumpylife_target_pid = 0;
 
     return NGX_OK;
 }
